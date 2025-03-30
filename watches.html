@@ -5,6 +5,7 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" href="favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Multi Stopwatch</title>
     <style>
         body {
@@ -16,6 +17,7 @@
             padding: 20px;
             background-color: #f4f4f4;
         }
+
         .container {
             display: flex;
             flex-wrap: wrap;
@@ -23,6 +25,7 @@
             gap: 20px;
             max-width: 600px;
         }
+
         .stopwatch {
             background: white;
             padding: 20px;
@@ -31,6 +34,7 @@
             text-align: center;
             width: 250px;
             position: relative;
+            margin-bottom: 20px; /* Add space between rows */
         }
         .buttons {
             display: flex;
@@ -79,6 +83,20 @@
         button.active-stop {
             background-color: red;
         }
+
+                /* For mobile devices, display 2 stopwatches per row */
+        @media (max-width: 768px) {
+            .stopwatch {
+                width: 45%;  /* Make each stopwatch take up 45% of the container */
+            }
+        }
+
+        /* For very small screens (portrait mobile), show stopwatches in full width */
+        @media (max-width: 480px) {
+            .stopwatch {
+                width: 100%;  /* Each stopwatch takes full width on very small screens */
+            }
+        }
     </style>
 </head>
 <body>
@@ -102,76 +120,103 @@
                 button.classList.add("active");
             }
         }
-
         function createStopwatch(id) {
-            let startTime = 0, elapsedTime = 0, running = false, laps = [], interval;
-            
-            function updateDisplay() {
-                const elapsed = running ? Date.now() - startTime + elapsedTime : elapsedTime;
-                const milliseconds = Math.floor(elapsed % 1000 / 10);
-                const seconds = Math.floor(elapsed / 1000) % 60;
-                const minutes = Math.floor(elapsed / 60000);
-                document.getElementById(`display${id}`).textContent = `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
-            }
+    let startTime = 0, elapsedTime = 0, lapStartTime = 0, running = false, laps = [], interval;
+    
+    function updateDisplay() {
+    const elapsed = running ? Date.now() - startTime + elapsedTime : elapsedTime;
+    const milliseconds = Math.floor(elapsed % 1000 / 10);
+    const seconds = Math.floor(elapsed / 1000) % 60;
+    const minutes = Math.floor(elapsed / 60000);
+    const totalTime = `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
 
-            function start() {
-                if (!running) {
-                    startTime = Date.now();
-                    interval = setInterval(updateDisplay, 10);
-                    running = true;
-                    document.getElementById(`start${id}`).classList.add("active-start");
-                    document.getElementById(`stop${id}`).classList.remove("active-stop");
-                }
-            }
+    document.getElementById(`display${id}`).textContent = totalTime;
 
-            function stop() {
-                if (running) {
-                    clearInterval(interval);
-                    elapsedTime += Date.now() - startTime;
-                    running = false;
-                    document.getElementById(`stop${id}`).classList.add("active-stop");
-                    document.getElementById(`start${id}`).classList.remove("active-start");
-                }
-            }
+    // Update the current lap time display
+    if (running) {
+        const lapElapsed = Date.now() - lapStartTime;
+        const lapMilliseconds = Math.floor(lapElapsed % 1000 / 10);
+        const lapSeconds = Math.floor(lapElapsed / 1000) % 60;
+        const lapMinutes = Math.floor(lapElapsed / 60000);
+        document.getElementById(`lapTime${id}`).textContent = `( ${lapMinutes}:${lapSeconds.toString().padStart(2, '0')}.${lapMilliseconds.toString().padStart(2, '0')})`;
+    }
+}
 
-            function lap() {
-                if (running) {
-                    const lapTime = document.getElementById(`display${id}`).textContent;
-                    let lapDiff = "";
-                    if (laps.length > 0) {
-                        const prevLap = laps[laps.length - 1].split(" (")[0];
-                        const prevTime = prevLap.split(/[:.]/).map(Number);
-                        const currTime = lapTime.split(/[:.]/).map(Number);
-                        
-                        let diffMs = (currTime[0] * 60000 + currTime[1] * 1000 + currTime[2] * 10) - 
-                                     (prevTime[0] * 60000 + prevTime[1] * 1000 + prevTime[2] * 10);
-                        
-                        const diffMin = Math.floor(diffMs / 60000);
-                        diffMs %= 60000;
-                        const diffSec = Math.floor(diffMs / 1000);
-                        const diffMsFinal = Math.floor((diffMs % 1000) / 10);
-                        lapDiff = ` (${diffMin}:${diffSec.toString().padStart(2, '0')}.${diffMsFinal.toString().padStart(2, '0')})`;
-                    }
-                    laps.push(`${lapTime}${lapDiff}`);
-                    document.getElementById(`laps${id}`).innerHTML = laps.map((lap, index) => `<div>Lap ${index + 1}: ${lap}</div>`).join('');
-                }
-            }
-
-            function reset() {
-                clearInterval(interval);
-                running = false;
-                startTime = 0;
-                elapsedTime = 0;
-                laps = [];
-                document.getElementById(`laps${id}`).innerHTML = '';
-                updateDisplay();
-                document.getElementById(`stop${id}`).classList.remove("active-stop");
-                document.getElementById(`start${id}`).classList.remove("active-start");
-            }
-
-            updateDisplay();
-            return { start, stop, lap, reset };
+    function start() {
+        if (!running) {
+            startTime = Date.now();
+            lapStartTime = startTime;  // Set lap start time
+            interval = setInterval(updateDisplay, 10);
+            running = true;
+            document.getElementById(`start${id}`).classList.add("active-start");
+            document.getElementById(`stop${id}`).classList.remove("active-stop");
         }
+    }
+
+    function stop() {
+        if (running) {
+            clearInterval(interval);
+            elapsedTime += Date.now() - startTime;
+            running = false;
+            document.getElementById(`stop${id}`).classList.add("active-stop");
+            document.getElementById(`start${id}`).classList.remove("active-start");
+        }
+    }
+
+    function lap() {
+    if (running) {
+        const lapTime = document.getElementById(`lapTime${id}`).textContent;
+        const totalTime = document.getElementById(`display${id}`).textContent;
+        let lapDiff = "";
+
+        if (laps.length > 0) {
+            const prevLap = laps[laps.length - 1].split(" (")[0];
+            const prevTime = prevLap.split(/[:.]/).map(Number);
+            const currTime = lapTime.split(/[:.]/).map(Number);
+
+            let prevTotalMs = (prevTime[0] * 60000) + (prevTime[1] * 1000) + (prevTime[2] * 10);
+            let currTotalMs = (currTime[0] * 60000) + (currTime[1] * 1000) + (currTime[2] * 10);
+            let diffMs = currTotalMs - prevTotalMs;
+
+            const diffMin = Math.floor(diffMs / 60000);
+            diffMs %= 60000;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMsFinal = Math.floor((diffMs % 1000) / 10);
+            
+            lapDiff = ` (${diffMin}:${diffSec.toString().padStart(2, '0')}.${diffMsFinal.toString().padStart(2, '0')})`;
+        }
+
+        // Push both total time and lap time to the laps array
+        laps.push(`${totalTime} ${lapTime}`);
+
+        // Update the lap list in the HTML with both total time and lap time
+        document.getElementById(`laps${id}`).innerHTML = laps.map((lap, index) => `<div>Lap ${index + 1}: ${lap}</div>`).join('');
+
+        // Reset lap start time
+        lapStartTime = Date.now();
+    }
+}
+
+
+
+    function reset() {
+        clearInterval(interval);
+        running = false;
+        startTime = 0;
+        lapStartTime = 0;
+        elapsedTime = 0;
+        laps = [];
+        document.getElementById(`laps${id}`).innerHTML = '';
+        document.getElementById(`lapTime${id}`).textContent = "Lap Time: 0:00.00"; // Reset lap time
+        updateDisplay();
+        document.getElementById(`stop${id}`).classList.remove("active-stop");
+        document.getElementById(`start${id}`).classList.remove("active-start");
+    }
+
+    updateDisplay();
+    return { start, stop, lap, reset };
+}
+
 
         function startSelected() {
             selectedStopwatches.forEach(id => {
@@ -191,6 +236,8 @@
                     <span class="stopwatch-number">${i}</span>
                     <input type="text" placeholder="Label" style="width: 80%; margin-bottom: 5px; text-align: center;">
                     <h2 id="display${i}">0:00.00</h2>
+                    <h3 id="lapTime${i}" style="font-size: 14px; color: gray;">Lap Time: 0:00.00</h3>  <!-- New Line -->
+
                     <div class="buttons">
                         <button id="start${i}" onclick="stopwatches[${i - 1}].start()">Start</button>
                         <button id="stop${i}" onclick="stopwatches[${i - 1}].stop()">Stop</button>
