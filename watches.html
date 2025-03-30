@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi Stopwatch</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 600px;
+        }
+        .stopwatch {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 250px;
+            position: relative;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .laps {
+            margin-top: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+            background: #eaeaea;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .stopwatch-number {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            color: darkgray;
+            font-size: 14px;
+        }
+        .start-multiple {
+            background-color: blue;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .select-button {
+            background-color: gray;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 2px;
+        }
+        .select-button.active {
+            background-color: blue;
+        }
+        button.active-start {
+            background-color: green;
+        }
+        button.active-stop {
+            background-color: red;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <span>Select Stopwatches:</span>
+        <div id="selectionButtons"></div>
+    </div>
+    <button class="start-multiple" onclick="startSelected()">Start Selected</button>
+    <div class="container" id="stopwatch-container"></div>
+    <script>
+        const stopwatches = [];
+        const selectedStopwatches = new Set();
+
+        function toggleSelection(id) {
+            const button = document.getElementById(`select${id}`);
+            if (selectedStopwatches.has(id)) {
+                selectedStopwatches.delete(id);
+                button.classList.remove("active");
+            } else {
+                selectedStopwatches.add(id);
+                button.classList.add("active");
+            }
+        }
+
+        function createStopwatch(id) {
+            let startTime = 0, elapsedTime = 0, running = false, laps = [], interval;
+            
+            function updateDisplay() {
+                const elapsed = running ? Date.now() - startTime + elapsedTime : elapsedTime;
+                const milliseconds = Math.floor(elapsed % 1000 / 10);
+                const seconds = Math.floor(elapsed / 1000) % 60;
+                const minutes = Math.floor(elapsed / 60000);
+                document.getElementById(`display${id}`).textContent = `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+            }
+
+            function start() {
+                if (!running) {
+                    startTime = Date.now();
+                    interval = setInterval(updateDisplay, 10);
+                    running = true;
+                    document.getElementById(`start${id}`).classList.add("active-start");
+                    document.getElementById(`stop${id}`).classList.remove("active-stop");
+                }
+            }
+
+            function stop() {
+                if (running) {
+                    clearInterval(interval);
+                    elapsedTime += Date.now() - startTime;
+                    running = false;
+                    document.getElementById(`stop${id}`).classList.add("active-stop");
+                    document.getElementById(`start${id}`).classList.remove("active-start");
+                }
+            }
+
+            function lap() {
+                if (running) {
+                    const lapTime = document.getElementById(`display${id}`).textContent;
+                    let lapDiff = "";
+                    if (laps.length > 0) {
+                        const prevLap = laps[laps.length - 1].split(" (")[0];
+                        const prevTime = prevLap.split(/[:.]/).map(Number);
+                        const currTime = lapTime.split(/[:.]/).map(Number);
+                        
+                        let diffMs = (currTime[0] * 60000 + currTime[1] * 1000 + currTime[2] * 10) - 
+                                     (prevTime[0] * 60000 + prevTime[1] * 1000 + prevTime[2] * 10);
+                        
+                        const diffMin = Math.floor(diffMs / 60000);
+                        diffMs %= 60000;
+                        const diffSec = Math.floor(diffMs / 1000);
+                        const diffMsFinal = Math.floor((diffMs % 1000) / 10);
+                        lapDiff = ` (${diffMin}:${diffSec.toString().padStart(2, '0')}.${diffMsFinal.toString().padStart(2, '0')})`;
+                    }
+                    laps.push(`${lapTime}${lapDiff}`);
+                    document.getElementById(`laps${id}`).innerHTML = laps.map((lap, index) => `<div>Lap ${index + 1}: ${lap}</div>`).join('');
+                }
+            }
+
+            function reset() {
+                clearInterval(interval);
+                running = false;
+                startTime = 0;
+                elapsedTime = 0;
+                laps = [];
+                document.getElementById(`laps${id}`).innerHTML = '';
+                updateDisplay();
+                document.getElementById(`stop${id}`).classList.remove("active-stop");
+                document.getElementById(`start${id}`).classList.remove("active-start");
+            }
+
+            updateDisplay();
+            return { start, stop, lap, reset };
+        }
+
+        function startSelected() {
+            selectedStopwatches.forEach(id => {
+                if (stopwatches[id - 1]) {
+                    stopwatches[id - 1].start();
+                }
+            });
+        }
+
+        for (let i = 1; i <= 6; i++) {
+            document.getElementById("selectionButtons").innerHTML += `
+                <button id="select${i}" class="select-button" onclick="toggleSelection(${i})">${i}</button>
+            `;
+
+            document.getElementById("stopwatch-container").innerHTML += `
+                <div class="stopwatch">
+                    <span class="stopwatch-number">${i}</span>
+                    <input type="text" placeholder="Label" style="width: 80%; margin-bottom: 5px; text-align: center;">
+                    <h2 id="display${i}">0:00.00</h2>
+                    <div class="buttons">
+                        <button id="start${i}" onclick="stopwatches[${i - 1}].start()">Start</button>
+                        <button id="stop${i}" onclick="stopwatches[${i - 1}].stop()">Stop</button>
+                        <button onclick="stopwatches[${i - 1}].lap()">Lap</button>
+                        <button onclick="stopwatches[${i - 1}].reset()">Reset</button>
+                    </div>
+                    <div id="laps${i}" class="laps"></div>
+                </div>
+            `;
+            stopwatches.push(createStopwatch(i));
+        }
+    </script>
+</body>
+</html>
